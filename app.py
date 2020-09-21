@@ -33,7 +33,7 @@ st.sidebar.text('')
 
 matches = st.radio("How do you want to bet?",('Bet on all matches', 'Bet on selected teams'))
 selected_teams = False
-teams = ''
+teams = []
 if matches == 'Bet on selected teams':
     selected_teams=True
     teams = st.multiselect('Select the teams you want to bet on:', df_season.HomeTeam.unique())
@@ -50,19 +50,24 @@ if betting_strat == 'Constant Bet':
     # st.write('Number of teams selected:', len(teams))
 
     if selected_teams:
+        st.text('Select at least one team to get started')
         df_season = pd.concat([df_season[df_season.HomeTeam.apply(lambda x: x in teams)],df_season[df_season.AwayTeam.apply(lambda x: x in teams)]])
 
-    try:
-        assert len(teams)>0
-    except NameError:
-        pass
-    except AssertionError:
-        st.text('Select at least one team to get started')
+    # try:
+    #     assert len(teams)>0
+    # except NameError:
+    #     pass
+    # except AssertionError:
+    #     st.text('Select at least one team to get started')
 
     df_cumearnings = df_season.iloc[:,[0,1,2,3,4]].merge(df_season[sources].cumsum(axis=0), how='left', left_index=True, right_index=True)
 
     st.header('Cumulative earnings for the season:')
-    st.line_chart(df_cumearnings.loc[:,sources.keys()])
+    st.line_chart((bet_per_match*len(df_season)) - df_cumearnings.loc[:,sources.keys()])
+    st.text("""NOTE:
+      - X: Match number of the season. Y: Your account balances.
+      - Double-click on the chart to reset
+      - The data for the chart is available for display. Tick 'Show Data' on the left panel.""")
 
     st.write('Total amount bet for the season:', len(df_season)*bet_per_match)
     st.header('Top performers of the season:')
@@ -79,8 +84,9 @@ if betting_strat == 'Constant Bet':
     except IndexError:
         st.text('Select at least one team to get started')
 
+    st.markdown('Betting in this strategy always ends up with a negative return as the odds are not accurate enough to give a return even when bet on safest ones. Do no bet kids!')
 
-if betting_strat == 'Percentage of current balance':
+if betting_strat == 'Percentage of total':
 
     # st.header('This section is a work in progress.... check back again soon!')
 
@@ -90,15 +96,16 @@ if betting_strat == 'Percentage of current balance':
     pct = st.sidebar.number_input('Percentage of account total:',value=0.2, min_value=0.0, max_value=1.0, step=0.01)
 
     if selected_teams:
+        st.text('Select at least one team to get started')
         df_season = pd.concat([df_season[df_season.HomeTeam.apply(lambda x: x in teams)],df_season[df_season.AwayTeam.apply(lambda x: x in teams)]])
         st.markdown('Number of matches: {0}'.format(len(df_season)))
 
-    try:
-        assert len(teams)>0
-    except NameError:
-        pass
-    except AssertionError:
-        st.text('Select at least one team to get started')
+    # try:
+    #     assert len(teams)>0
+    # except NameError:
+    #     pass
+    # except AssertionError:
+    #     st.text('Select at least one team to get started')
 
     for src in sources.keys():
     # src='B365'
@@ -127,10 +134,34 @@ if betting_strat == 'Percentage of current balance':
 
         df_season[src] = df_src.closing_balance
     # df_season
-    st.line_chart(df_season.loc[:,sources.keys()])
+
     # try:
-    df_top = df_season.tail(1).T#.iloc[5:,:].sort_values(by=df_season.index.tolist()[-1], ascending=False)
-    df_top
+    df_top = df_season.loc[:,sources.keys()]#.iloc[5:,:].sort_values(by=df_season.index.tolist()[-1], ascending=False)
+    df_top.index = df_top.index+1
+
+    df_top = df_top.T
+    df_top.insert(0,0,start_amount)
+    df_top = df_top.T
+
+    st.subheader('Your balances for the season:')
+    st.line_chart(df_top.loc[:,sources.keys()])
+    st.text("""NOTE:
+      - X: Match number of the season. Y: Your account balances.
+      - Double-click on the chart to reset
+      - The data for the chart is available. Tick 'Show Data' on the left panel.""")
+
+    df_top_res = pd.DataFrame(df_top.apply('max', axis=0).sort_values(0, ascending=False), columns = ['Max'])
+    df_top_res['Position'] = df_top.idxmax(axis=0)
+    df_top_res.rename(index=sources, inplace=True)
+
+    if max(df_top_res.Position)>0:
+        st.markdown('It seems there were few profitable positions in this season for your strategy:')
+        st.table(df_top_res[df_top_res.Position>0].style.format("{:.2f}"))
+    else:
+        st.markdown('It seems this strategy did not work out for this season. Try changing betting parameters or try another season.')
+
+
+    # st.write(pd.DataFrame(df_top_res).style.format("{:.2f}"))
     # df_top = df_top.head(5).round(0)
     # df_top.rename(index=sources, inplace=True)
     # df_top.columns = ['Winnings']
@@ -140,6 +171,9 @@ if betting_strat == 'Percentage of current balance':
     # st.table(df_top)
     # except IndexError:
     #     st.text('Select at least one team to get started')
+
+
+    st.markdown('With this strategy, you have to know when to quit for a positive return. And not all seasons are profitable. Again, probably best if you don\'t bet.')
 
 if st.sidebar.checkbox('Show data'):
     st.subheader('Match-wise earnings data')
