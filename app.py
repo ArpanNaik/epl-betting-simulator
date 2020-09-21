@@ -80,7 +80,7 @@ if betting_strat == 'Constant Bet':
         st.text('Select at least one team to get started')
 
 
-if betting_strat == 'Percentage of total':
+if betting_strat == 'Percentage of current balance':
 
     # st.header('This section is a work in progress.... check back again soon!')
 
