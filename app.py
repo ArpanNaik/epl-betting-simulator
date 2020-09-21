@@ -2,7 +2,8 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-st.title('English Premier League - Betting Odds Comparison')
+st.title('English Premier League - Betting Simulator')
+st.subheader('Try out various betting strategies for the English Primier League for the last ten years')
 
 df_earnings = pd.read_csv('Earnings_Odds.csv')
 
